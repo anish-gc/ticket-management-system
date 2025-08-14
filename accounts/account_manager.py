@@ -21,7 +21,7 @@ class AccountManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         
         if 'role' not in extra_fields:
-            admin_role = Role.objects.get_or_create(name='Admin')[0]
+            admin_role = Role.objects.get_or_create(name='admin')[0]
             extra_fields['role'] = admin_role
 
         return self.create_user(username, phone_number, password, **extra_fields)

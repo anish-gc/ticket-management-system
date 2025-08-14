@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
+from utilities.exception import CustomAPIException
 from utilities.models import BaseModel
 
 
@@ -11,7 +12,7 @@ class Role(BaseModel):
     """
 
     name = models.CharField(
-        _("name"), max_length=150, help_text=_("The name of the role")
+        _("name"), max_length=150, help_text=_("The name of the role"), unique=True
     )
 
     is_predefined = models.BooleanField(
@@ -47,3 +48,7 @@ class Role(BaseModel):
     def get_default_roles(cls):
         """Get all predefined/default roles."""
         return cls.objects.predefined()
+
+    def ensure_not_predefined(self):
+        if self.is_predefined:
+            raise CustomAPIException("You cannot modify or delete default roles...")

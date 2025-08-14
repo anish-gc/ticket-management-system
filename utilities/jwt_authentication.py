@@ -15,7 +15,6 @@ class CustomJWTAuthentication(JWTAuthentication):
         try:
             # Get the raw token from the header
             header = self.get_header(request)
-            print(header)
             if header is None:
                 return None
 
