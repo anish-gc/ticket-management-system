@@ -1,0 +1,40 @@
+RESPONSE_CODE = "ResponseCode"
+UNSUCCESS_CODE = '1'
+SUCCESS_CODE = '0'
+RESPONSE_MESSAGE = 'response'
+RESPONSE_UNSUCCESS_MESSAGE ="Invalid"
+RESPONSE_SUCCESS_MESSAGE ="Ok"
+
+ERROR_DETAILS ="error"
+NO_USER="Oops! We couldn't find any users."
+INTERNAL_SERVER_ERROR = "Oops! Something went wrong."
+NO_REQUEST_BODY = "Body can not be blank."
+PRE_DEFIND_EDIT_MSG = "Pre-defined account group can't be edited!"
+PRE_DEFIND_DELETE_MSG = "Pre-defined account group can't be deleted!."
+REFERENCE_ID = "referenceId"
+DATA_NOT_FOUND = "Data not found."
+
+DATA ="data"
+
+
+
+
+UNSUCCESS_JSON = {
+    RESPONSE_CODE: UNSUCCESS_CODE,
+    RESPONSE_MESSAGE: RESPONSE_UNSUCCESS_MESSAGE
+}
+
+INTERNAL_SERVER_ERROR_JSON = {
+    RESPONSE_CODE: UNSUCCESS_CODE,
+    RESPONSE_MESSAGE: INTERNAL_SERVER_ERROR
+}
+
+SUCCESS_JSON = {
+    RESPONSE_CODE: SUCCESS_CODE,
+    RESPONSE_MESSAGE: RESPONSE_SUCCESS_MESSAGE
+}
+
+BODY_NOT_BLANK_JSON = {
+        RESPONSE_CODE: UNSUCCESS_CODE,
+        RESPONSE_MESSAGE:"body can not be blank.",
+}

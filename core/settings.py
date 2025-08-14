@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "corsheaders",
+    "rest_framework",
     "rest_framework_simplejwt",
     # apps
     "accounts",
@@ -33,7 +34,12 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
 ]
+INSTALLED_APPS += [
+    'rest_framework_simplejwt.token_blacklist',
+]
+
 
 ROOT_URLCONF = "core.urls"
 
@@ -54,6 +60,11 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "core.wsgi.application"
+CORS_ALLOW_HEADERS = [
+    "content-type",
+    "authorization",
+]
+CORS_ALLOW_CREDENTIALS = True
 
 
 # Database
@@ -67,10 +78,6 @@ DATABASES = {
 }
 
 
-
-
-
-
 LANGUAGE_CODE = "en-us"
 
 TIME_ZONE = "Asia/Kathmandu"
@@ -80,9 +87,67 @@ USE_I18N = True
 USE_TZ = True
 
 
-
 STATIC_URL = "static/"
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-AUTH_USER_MODEL = 'accounts.Account'
+AUTH_USER_MODEL = "accounts.Account"
+
+
+REST_FRAMEWORK = {
+    "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.URLPathVersioning",
+    "DEFAULT_VERSION": "v1",
+    "DEFAULT_AUTHENTICATION_CLASSES": {
+        "utilities.jwt_authentication.CustomJWTAuthentication",
+    },
+    "DEFAULT_PERMISSION_CLASSES": {
+        "utilities.permission.CustomPermission",
+    },
+    "EXCEPTION_HANDLER": "utilities.exception.custom_exception_handler",
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+    "DEFAULT_PARSER_CLASSES": [
+        "rest_framework.parsers.JSONParser",
+        "rest_framework.parsers.FormParser",
+        "rest_framework.parsers.MultiPartParser",
+    ],
+}
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "timestamp": {
+            "format": "{asctime} {levelname} {message} {lineno} ",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": "debug.log",
+            "formatter": "timestamp",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}
+
+DEFAULT_FROM_EMAIL = "Jewelry <anishgharti10@gmail.com>"
+EMAIL_HOST_USER = "spicyh166@gmail.com"
+EMAIL_HOST_PASSWORD = "zjcncrapjofwrrdz"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+PAGE_SIZE = 10
+
+
+from .jwt_behaviour import *
+
