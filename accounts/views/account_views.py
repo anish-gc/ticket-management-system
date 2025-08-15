@@ -22,13 +22,11 @@ class AccountCreateListApiView(BaseAPIView):
     Retrieves a list of all active users. This view requires custom authentication and permissions.
     """
 
-    menu_url = "/user/"
+    menu_url = "/account/"
     action = "L"
 
     def get(self, request):
-
-        query = {"is_active": True}
-        return self.handle_serializer_data(Account, AccountListSerializer, True, query)
+        return self.handle_serializer_data(Account, AccountListSerializer,  {"is_active": True})
 
     def post(self, request):
         """Create a new User."""
@@ -42,7 +40,7 @@ class AccountCreateListApiView(BaseAPIView):
 class AccountDetailsApiView(BaseAPIView):
     """API endpoint for retrieving, updating, and deleting a specific account."""
 
-    menu_url = "/user/"
+    menu_url = "/account/"
 
     def get(self, request, pk):
         """Retrieve a account by reference_id."""

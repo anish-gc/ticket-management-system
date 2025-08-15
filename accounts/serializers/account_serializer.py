@@ -24,6 +24,7 @@ class AccountSerializer(serializers.Serializer):
         for key, value in validated_data.items():
             setattr(instance, key, value)
         instance.save()
+        return instance
 
     def validate(self, data):
         try:
@@ -46,6 +47,9 @@ class AccountSerializer(serializers.Serializer):
             raise Exception(str(exc))
 
     def _check_unique_fields(self, data, exclude_id):
+        if 'username' in data and Account.objects.filter(username=data["username"]).exclude(reference_id=exclude_id).exists():
+            raise CustomAPIException("Username already exists.")
+
         if 'phone_number' in data and Account.objects.filter(phone_number=data["phone_number"]).exclude(reference_id=exclude_id).exists():
             raise CustomAPIException("Mobile Number already exists.")
 
@@ -53,23 +57,34 @@ class AccountSerializer(serializers.Serializer):
             raise CustomAPIException("Email already exists.")
 
     def _validate_creation(self, data):
+       
+        if 'username' in data and Account.objects.filter(username=data["username"]).exists():
+            raise CustomAPIException("Username already exists.")
+
+      
+        if Account.objects.filter(phone_number=data.get("phone_number")).exists():
+            raise CustomAPIException("Phone Number already exists.")
+
+        if Account.objects.filter(email=data.get("email")).exists():
+            raise CustomAPIException("Email already exists.")
         if not data.get("password"):
             raise CustomAPIException("Password cannot be blank.")
         if not validate_password(data["password"]):
             raise CustomAPIException("Password must contain at least one uppercase letter, one lowercase letter, one digit, and be at least 8 characters long.")
 
-        if Account.objects.filter(phone_number=data.get("phone_number")).exists():
-            raise CustomAPIException("Mobile Number already exists.")
-
-        if Account.objects.filter(email=data.get("email")).exists():
-            raise CustomAPIException("Email already exists.")
-
-
 
 
 class AccountListSerializer(serializers.Serializer):
+    referenceId = serializers.CharField(read_only=True, source='reference_id')
     username = serializers.CharField(read_only=True)
     address = serializers.CharField(read_only=True)
     email = serializers.CharField(read_only=True)
-    phoneNumber = serializers.CharField(source="phone_number",read_only=True)
+    phoneNumber = serializers.CharField(source="phone_number", read_only=True)
     role = serializers.CharField(read_only=True)
+
+    def to_representation(self, instance):
+        """Customize representation for consistent API response."""
+        data = super().to_representation(instance)
+        data["email"] = data["email"] or ""  # Ensure email is never None
+        data["role"] = data["role"] or ""  
+        return data
