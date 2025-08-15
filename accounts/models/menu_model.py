@@ -30,3 +30,7 @@ class Menu(BaseModel):
 
     def __str__(self):
         return self.menu_name
+
+
+
+

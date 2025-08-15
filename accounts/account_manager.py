@@ -19,9 +19,6 @@ class AccountManager(BaseUserManager):
     def create_superuser(self, username, phone_number, password=None, **extra_fields):
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_staff', True)
-        
-        if 'role' not in extra_fields:
-            admin_role = Role.objects.get_or_create(name='admin')[0]
-            extra_fields['role'] = admin_role
+  
 
         return self.create_user(username, phone_number, password, **extra_fields)

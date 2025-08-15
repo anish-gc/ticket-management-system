@@ -26,7 +26,7 @@ class Account(AbstractBaseUser, BaseModel, PermissionsMixin):
     email = models.EmailField(unique=True,  blank=True, null=True, help_text="Optional email address. Must be unique if provided.")
     phone_number = models.CharField(max_length=10, unique=True,        help_text="Required. 10-digit phone number.")
     address = models.CharField(max_length=255, blank=True, help_text="Address of the user (e.g., Tilottama-3, Yogikuti, Shantichowk, near futsal Brahmapath)")  
-    role = models.ForeignKey(Role, on_delete=models.PROTECT, related_name='accounts')
+    role = models.ForeignKey(Role, on_delete=models.PROTECT, related_name='accounts', blank=True, null=True)
     is_staff = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'username'
