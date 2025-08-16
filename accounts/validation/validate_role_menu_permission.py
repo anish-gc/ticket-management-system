@@ -3,126 +3,216 @@ from accounts.models.role_menu_permission_model import RoleMenuPermission
 from accounts.models.role_model import Role
 from utilities.exception import CustomAPIException
 from utilities.global_functions import generate_uuid, model_validation, validate_boolean
-from datetime import datetime
+from typing import List, Dict, Any
+from collections import defaultdict
+from django.db import transaction
+from django.utils import timezone
+from typing import List, Dict, Any
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-def validate_role_menu_permission(request, pk):
-    try:
-        data = request.data
-        role_menu_create: list = []
+class RoleMenuPermissionConfig:
+    """Configuration constants for role menu permissions"""
 
-        # Validate and get menu_list
-        menu_details = data.get("menuDetails", [])
-        if not menu_details:
-            raise CustomAPIException("Menu Details can not be blank.")
+    PERMISSION_FIELDS = ["isCreate", "isView", "isUpdate", "isDelete"]
+    DEFAULT_PERMISSIONS = {
+        "isCreate": False,
+        "isView": True,  # Usually view should be default True
+        "isUpdate": False,
+        "isDelete": False,
+    }
+    BATCH_SIZE = 100
 
-        # Validate and get role
-        role_id = data.get("roleId")
-        if not role_id:
-            raise CustomAPIException("Role can not be blank.")
+    @classmethod
+    def get_permission_value(cls, data: dict, field: str) -> bool:
+        """Get permission value with default fallback"""
+        return data.get(field, cls.DEFAULT_PERMISSIONS[field])
 
-        role = model_validation(Role, "Select a valid role.", {"reference_id": role_id})
 
-        for details in menu_details:
-            menu_id = details.get("menuId")
-            if not menu_id:
-                raise CustomAPIException("Menu can not be blank.")
+class EnhancedRoleMenuPermissionService:
+    PERMISSION_FIELDS = ["isCreate", "isView", "isUpdate", "isDelete"]
 
-            menu = model_validation(
-                Menu, "Select a valid menu.", {"reference_id": menu_id}
+    @classmethod
+    def get_role_permissions(cls, role_id: str = None) -> List[Dict[str, Any]]:
+        """
+        Get role menu permissions with optional role filtering
+
+        Args:
+            role_id: Optional role ID to filter by
+
+        Returns:
+            List of role permission dictionaries
+        """
+        # Build queryset
+        queryset = RoleMenuPermission.objects.select_related("role", "menu")
+
+        if role_id:
+            queryset = queryset.filter(role__reference_id=role_id)
+
+        permissions = queryset.values(
+            "role__name",
+            "role__reference_id",
+            "menu__menu_name",
+            "menu__reference_id",
+            "can_create",
+            "can_view",
+            "can_update",
+            "can_delete",
+        ).order_by("role__name", "menu__menu_name")
+
+        # Group by role
+        grouped_permissions = defaultdict(lambda: {"menuDetails": []})
+
+        for perm in permissions:
+            role_key = perm["role__reference_id"]
+
+            # Add role info if first menu for this role
+            if not grouped_permissions[role_key]["menuDetails"]:
+                grouped_permissions[role_key].update(
+                    {
+                        "role": perm["role__name"],
+                        "roleId": perm["role__reference_id"],
+                    }
+                )
+
+            # Add menu details
+            grouped_permissions[role_key]["menuDetails"].append(
+                {
+                    "menuName": perm["menu__menu_name"],
+                    "menuId": perm["menu__reference_id"],
+                    "isCreate": perm["can_create"],
+                    "isView": perm["can_view"],
+                    "isUpdate": perm["can_update"],
+                    "isDelete": perm["can_delete"],
+                }
             )
 
-            can_create = details.get("isCreate", True)
-            validate_boolean(can_create)
+        return list(grouped_permissions.values())
 
-            can_list = details.get("isView", True)
-            validate_boolean(can_list)
+    @classmethod
+    def validate_permission_data(
+        cls, permission_data: Dict[str, Any], index: int = None
+    ) -> None:
+        """Validate individual permission data"""
+        item_ref = f" for item {index + 1}" if index is not None else ""
 
-            can_update = details.get("isUpdate", True)
-            validate_boolean(can_update)
+        if not permission_data.get("menuId"):
+            raise CustomAPIException(f"Menu ID cannot be blank{item_ref}.")
+        print(f'permission data is {permission_data}')
+        # Validate permission field types
+        for field in cls.PERMISSION_FIELDS:
+            value = permission_data.get(field)
+            if value is not None and not isinstance(value, bool):
+                raise CustomAPIException(
+                    f"Field '{field}' must be a boolean value{item_ref}."
+                )
 
-            can_delete = details.get("isDelete", True)
-            validate_boolean(can_delete)
+        # Ensure at least one permission is True
+        if not any(
+            permission_data.get(field, False) for field in cls.PERMISSION_FIELDS
+        ):
+            raise CustomAPIException(
+                f"At least one permission must be enabled{item_ref}."
+            )
 
-            role_menu_create.append(
+    @classmethod
+    def validate_menu_details(cls, menu_details: List[Dict[str, Any]]) -> None:
+        """Validate the entire menu details list"""
+        if not menu_details:
+            raise CustomAPIException("Menu Details cannot be blank.")
+
+        if not isinstance(menu_details, list):
+            raise CustomAPIException("Menu Details must be a list.")
+
+        # Check for duplicate menu IDs
+        menu_ids = [
+            detail.get("menuId") for detail in menu_details if detail.get("menuId")
+        ]
+        if len(menu_ids) != len(set(menu_ids)):
+            raise CustomAPIException("Duplicate menu entries are not allowed.")
+
+        # Validate each permission data with index for better error messages
+        for index, menu_detail in enumerate(menu_details):
+            cls.validate_permission_data(menu_detail, index)
+
+    @classmethod
+    def bulk_validate_menus(cls, menu_ids: List[str]) -> Dict[str, Any]:
+        """Validate all menus exist and return them as a dictionary"""
+        existing_menus = Menu.objects.filter(reference_id__in=menu_ids)
+        existing_menu_dict = {menu.reference_id: menu for menu in existing_menus}
+
+        if len(existing_menu_dict) != len(set(menu_ids)):
+            missing_ids = set(menu_ids) - set(existing_menu_dict.keys())
+            raise CustomAPIException(f"Invalid menu IDs: {', '.join(missing_ids)}")
+
+        return existing_menu_dict
+
+    @classmethod
+    def create_role_menu_permissions(
+        cls, role, menu_details: List[Dict[str, Any]], user
+    ) -> List[RoleMenuPermission]:
+        """Create permissions with configuration-based defaults"""
+        menu_ids = [details["menuId"] for details in menu_details]
+        menu_dict = cls.bulk_validate_menus(menu_ids)
+
+        role_menu_permissions = []
+        current_time = timezone.now()
+
+        for details in menu_details:
+            menu = menu_dict[details["menuId"]]
+
+            role_menu_permissions.append(
                 RoleMenuPermission(
                     reference_id=generate_uuid(),
                     menu=menu,
                     role=role,
-                    can_create=can_create,
-                    can_view=can_list,
-                    can_update=can_update,
-                    can_delete=can_delete,
-                    created_by=request.user,
-                    created_at=datetime.datetime.now(),
+                    can_create=RoleMenuPermissionConfig.get_permission_value(
+                        details, "isCreate"
+                    ),
+                    can_view=RoleMenuPermissionConfig.get_permission_value(
+                        details, "isView"
+                    ),
+                    can_update=RoleMenuPermissionConfig.get_permission_value(
+                        details, "isUpdate"
+                    ),
+                    can_delete=RoleMenuPermissionConfig.get_permission_value(
+                        details, "isDelete"
+                    ),
+                    created_by=user,
+                    created_at=current_time,
                 )
             )
 
-        return role, role_menu_create
+        return role_menu_permissions
 
-    except CustomAPIException as exe:
-        raise CustomAPIException(exe.detail)
-    except Exception as exc:
-        raise Exception(str(exc))
+    @classmethod
+    def assign_role_permissions(
+        cls, role_id: str, menu_details: List[Dict[str, Any]], user
+    ) -> int:
+        """Complete workflow for assigning permissions to a role"""
+        # Validate role
+        role = model_validation(Role, "Select a valid role.", {"reference_id": role_id})
 
+        # Validate menu details
+        cls.validate_menu_details(menu_details)
 
-def get_menu_structure(role_id):
-    if not role_id:
-        raise CustomAPIException(
-            "Access restricted. You must have the specified role to continue"
-        )
-    if not RoleMenuPermission.objects.filter(role_id=role_id).exists():
-        raise CustomAPIException(
-            "Access denied. Your current role does not have the permissions to access this menu."
-        )
+        # Create and assign permissions
+        with transaction.atomic():
+            # Delete existing permissions
+            deleted_count = RoleMenuPermission.objects.filter(role=role).delete()[0]
 
-    role_menus = RoleMenuPermission.objects.filter(role_id=role_id)
-    menu_ids = role_menus.filter(menu_id__parent__isnull=True).values_list(
-        "menu_id", flat=True
-    )
+            # Create new permissions
+            permissions = cls.create_role_menu_permissions(role, menu_details, user)
+            created_permissions = RoleMenuPermission.objects.bulk_create(
+                permissions, batch_size=100
+            )
 
-    # Fetch parent menus that match the role_id and are not deleted
-    parent_menus = Menu.objects.filter(
-        id__in=menu_ids, visibility=True
-    ).order_by("display_number")
+            logger.info(
+                f"Updated permissions for role {role.reference_id}: "
+                f"deleted {deleted_count}, created {len(created_permissions)}"
+            )
 
-    menu_data = []
-    for menu in parent_menus:
-        menu_data.append(build_menu_item(menu, role_menus))
+        return len(created_permissions)
 
-    return menu_data
-
-
-
-
-def build_menu_item(menu, role_menus):
-    # Fetch permissions for the given menu from the pre-fetched role_menus
-    role_permission = role_menus.filter(menu=menu).first()
-    
-    is_view = role_permission.can_view if role_permission else False 
-    is_create = role_permission.can_create if role_permission else False
-    is_update = role_permission.can_update if role_permission else False
-    is_delete = role_permission.can_delete if role_permission else False
-
-    # Fetch submenus that match the role_id and are not deleted
-    submenu_ids = role_menus.values_list('menu_id', flat=True)
-    submenus = Menu.objects.filter(id__in=submenu_ids, parent=menu,  visibility=True).order_by('display_number')
-    
-    submenu_data = [build_menu_item(submenu, role_menus) for submenu in submenus]
-
-    data = {
-        "id": menu.reference_id,
-        "name": menu.menu_name,
-        "url": menu.menu_url,
-        "icon": menu.icon,
-        "createUrl": menu.create_url,
-        "listUrl": menu.list_url,
-        "subMenus": submenu_data if submenu_data else None
-    }
-    if not submenu_data:
-        data["isView"] = is_view
-        data["isCreate"] = is_create
-        data["isUpdate"] = is_update
-        data["isDelete"] = is_delete
-
-    return data 

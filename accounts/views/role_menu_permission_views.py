@@ -1,13 +1,11 @@
-from accounts.models.role_menu_permission_model import RoleMenuPermission
-from accounts.models.role_model import Role
 from accounts.validation.validate_role_menu_permission import (
-    validate_role_menu_permission,
+    EnhancedRoleMenuPermissionService,
 )
 from utilities.api_views import BaseAPIView
-from collections import defaultdict
-from django.db import transaction
 from utilities.exception import CustomAPIException
-from utilities.global_functions import model_validation
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class RoleMenuPermissionCreateListApiView(BaseAPIView):
@@ -15,43 +13,43 @@ class RoleMenuPermissionCreateListApiView(BaseAPIView):
 
     def get(self, request):
         try:
-            permissions = RoleMenuPermission.objects.select_related(
-                "role", "menu"
-            ).values("role__name", "role__reference_id", "menu__menu_name")
+            permissions = EnhancedRoleMenuPermissionService.get_role_permissions()
 
-            grouped_permissions = defaultdict(lambda: {"menu": []})
-
-            for perm in permissions:
-                role_key = f"{perm['role__role']}"
-                if not grouped_permissions[role_key]["menu"]:
-                    grouped_permissions[role_key].update(
-                        {
-                            "role": perm["role__role"],
-                            "roleId": perm["role__reference_id"],
-                        }
-                    )
-                grouped_permissions[role_key]["menu"].append(perm["menu__menu_name"])
-
-            json_output = list(grouped_permissions.values())
-
-            return self.handle_success(None, json_output)
-
+            return self.handle_success(
+                "Role menu permissions retrieved successfully.", permissions
+            )
         except Exception as exe:
+            logger.error(f"Error retrieving permissions: {str(exe)}", exc_info=True)
             return self.handle_view_exception(exe)
 
     def post(self, request):
+        """Assign menu permissions to a role"""
         try:
-            role, role_menu_create = validate_role_menu_permission(request, None)
-            with transaction.atomic():
-                RoleMenuPermission.objects.filter(role=role).delete()
-                RoleMenuPermission.objects.bulk_create(role_menu_create)
+            data = request.data
 
-            return self.handle_success("Menu permissions assigned successfully.")
+            # Validate required fields
+            role_id = data.get("roleId")
+            if not role_id:
+                raise CustomAPIException("Role cannot be blank.")
+
+            menu_details = data.get("menuDetails", [])
+            # Use service to handle the complete workflow
+            permissions_count = (
+                EnhancedRoleMenuPermissionService.assign_role_permissions(
+                    role_id=role_id, menu_details=menu_details, user=request.user
+                )
+            )
+
+            return self.handle_success(
+                "Menu permissions assigned successfully.",
+                data={"permissions_created": permissions_count},
+            )
 
         except CustomAPIException as exe:
+            logger.warning(f"Validation error in role menu permission: {exe.detail}")
             return self.handle_custom_exception(exe)
-
         except Exception as exe:
+            logger.error(f"Error assigning menu permissions: {str(exe)}", exc_info=True)
             return self.handle_view_exception(exe)
 
 
@@ -60,43 +58,44 @@ class RoleMenuPermissionDetailsApiView(BaseAPIView):
 
     def get(self, request):
         try:
-            data = request.query_params
-
-            role_id = data["roleId"] if "roleId" in data else ""
-            if not role_id:
-                raise CustomAPIException("Role can not be blank.")
-
-            role = model_validation(
-                Role, "Select a valid Role.", {"reference_id": role_id}
+            role_id = request.query_params.get("roleId")  # Optional filtering
+            permissions = EnhancedRoleMenuPermissionService.get_role_permissions(
+                role_id
             )
 
-            menus = validate_role_menu_permission.get_menu_structure(role)
-            data = {
-                "roleId": role.reference_id,
-                "role": role.role,
-                "menuDetails": menus,
-            }
-
-            return self.handle_success(None, data)
-
-        except CustomAPIException as exe:
-            return self.handle_custom_exception(exe)
-
+            return self.handle_success(
+                "Role menu permissions retrieved successfully.", permissions
+            )
         except Exception as exe:
+            logger.error(f"Error retrieving permissions: {str(exe)}", exc_info=True)
             return self.handle_view_exception(exe)
 
     def patch(self, request):
         try:
-            branch, role, role_menu_create = validate_role_menu_permission(
-                request, None
+            data = request.data
+
+            # Validate required fields
+            role_id = data.get("roleId")
+            if not role_id:
+                raise CustomAPIException("Role ID cannot be blank.")
+
+            menu_details = data.get("menuDetails", [])
+
+            # Use service to handle the complete workflow
+            permissions_count = (
+                EnhancedRoleMenuPermissionService.assign_role_permissions(
+                    role_id=role_id, menu_details=menu_details, user=request.user
+                )
             )
-            with transaction.atomic():
-                RoleMenuPermission.objects.filter(role=role).delete()
-                RoleMenuPermission.objects.bulk_create(role_menu_create)
-            return self.handle_success("Menu permissions update successfully.")
+
+            return self.handle_success(
+                f"Menu permissions updated successfully.",
+                data={"permissions_created": permissions_count},
+            )
 
         except CustomAPIException as exe:
+            logger.warning(f"Validation error in role menu permission: {exe.detail}")
             return self.handle_custom_exception(exe)
-
         except Exception as exe:
+            logger.error(f"Error  menu permissions: {str(exe)}", exc_info=True)
             return self.handle_view_exception(exe)
