@@ -1,184 +1,169 @@
 from rest_framework import serializers
-from django.core.validators import MinValueValidator, MaxValueValidator
 
+from accounts.models.account_model import Account
 from accounts.models.menu_model import Menu
-from utilities.global_functions import model_validation
+from tickets.models.ticket_model import Ticket
+from tickets.models.ticket_priority_model import TicketPriority
+from tickets.models.ticket_status_model import TicketStatus
+from utilities.exception import CustomAPIException
+from utilities.global_functions import model_validation, validate_datetime
+from django.utils import timezone
+from datetime import timedelta
+from rest_framework import serializers
+from django.utils import timezone
+from datetime import timedelta
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class TicketSerializer(serializers.Serializer):
-
     # Required fields
-    title = serializers.CharField(
-        max_length=200,
-        error_messages={
-            "required": "Ticket title is required.",
-            "blank": "Ticket title cannot be blank.",
-            "max_length": "Title cannot exceed 200 characters.",
-        },
-    )
+    title = serializers.CharField(max_length=200)
+    description = serializers.CharField()
 
-    description = serializers.CharField(
-        error_messages={
-            "required": "Ticket description is required.",
-            "blank": "Ticket description cannot be blank.",
-        }
-    )
-
-    menuId = serializers.CharField(
-        source="menu",
-        allow_null=True,
-        required=False,
-    )
-
-    statusId = serializers.CharField(
-        source="status",
-        error_messages={
-            "required": "Status is required.",
-        },
-    )
-
-    priorityId = serializers.CharField(
-        source="priority",
-        error_messages={
-            "required": "Priority is required.",
-        },
-    )
-
+    # Foreign keys via reference IDs
+    menuId = serializers.CharField(source="menu", allow_null=True, required=False)
+    statusId = serializers.CharField(source="status")
+    priorityId = serializers.CharField(source="priority")
     createdFor = serializers.CharField(
-        source="created_for",
-        allow_null=True,
-        required=False,
+        source="created_for", allow_null=True, required=False
     )
-
     assignedTo = serializers.CharField(
-        source="assigned_to",
-        allow_null=True,
-        required=False,
+        source="assigned_to", allow_null=True, required=False
     )
 
+    # Datetime fields (strings from API, converted internally)
     responseDeadline = serializers.CharField(
-        required=False,
-        allow_null=True,
-        source="response_deadline",
+        source="response_deadline", allow_null=True, required=False
     )
-
-    dueDate = serializers.CharField(
-        required=False,
-        allow_null=True,
-        source="due_date",
-    )
-
+    dueDate = serializers.CharField(source="due_date", allow_null=True, required=False)
     resolvedAt = serializers.CharField(
-        required=False,
-        allow_null=True,
-        source="resolved_at",
+        source="resolved_at", allow_null=True, required=False
     )
-
     slaDueDate = serializers.CharField(
-        required=False,
-        allow_null=True,
-        source="sla_due_date",
+        source="sla_due_date", allow_null=True, required=False
     )
 
-    # Boolean fields
+    # Booleans
     slaBreached = serializers.BooleanField(
-        required=False, default=False, source="sla_breached"
+        source="sla_breached", default=False, required=False
     )
-
     isEscalated = serializers.BooleanField(
-        required=False, default=False, source="is_escalated"
+        source="is_escalated", default=False, required=False
     )
 
-    # Customer satisfaction with validation
+    # Customer satisfaction
     customerSatisfaction = serializers.IntegerField(
+        source="customer_satisfaction",
         required=False,
         allow_null=True,
-        source="customer_satisfaction",
-        validators=[
-            MinValueValidator(
-                1, message="Customer satisfaction rating must be between 1 and 5."
-            ),
-            MaxValueValidator(
-                5, message="Customer satisfaction rating must be between 1 and 5."
-            ),
-        ],
-        error_messages={
-            "invalid": "Enter a valid integer for customer satisfaction rating."
-        },
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
     )
 
     def validate(self, data):
-        menu_reference_id = data.get('menuId')
-        menu = model_validation(Menu, 'Select a valid menu', {'reference_id': menu_reference_id})
-        
+        """
+        Validate reference IDs, parse datetime strings, and apply business logic
+        """
+        self._resolve_foreign_keys(data)
+        self._parse_datetime_fields(data)
+        self._validate_deadline_order(data)
+        self._apply_business_logic(data)
+        return data
 
+    def _resolve_foreign_keys(self, data):
+        fk_mapping = {
+            "menu": Menu,
+            "status": TicketStatus,
+            "priority": TicketPriority,
+            "created_for": Account,
+            "assigned_to": Account,
+        }
+        for field, model in fk_mapping.items():
+            ref_id = data.get(field)
+            if ref_id:
+                data[field] = model_validation(
+                    model, f"Select a valid {field}", {"reference_id": ref_id}
+                )
 
-#     def validate(self, data):
-#         """Cross-field validation"""
-#         errors = {}
+    def _parse_datetime_fields(self, data):
+        datetime_fields = [
+            "response_deadline",
+            "due_date",
+            "resolved_at",
+            "sla_due_date",
+        ]
+        for field in datetime_fields:
+            if field in data and data[field] is not None:
+                # Parse string to aware datetime
+                data[field] = validate_datetime(data[field])
 
-#         # Validate that due_date is after response_deadline if both are provided
-#         if data.get("due_date") and data.get("response_deadline"):
-#             if data["due_date"] <= data["response_deadline"]:
-#                 errors["dueDate"] = "Due date must be after response deadline."
+    def _validate_deadline_order(self, data):
+        rd = data.get("response_deadline")
+        dd = data.get("due_date")
+        if rd and dd and dd <= rd:
+            raise CustomAPIException("Due date must be after response deadline.")
 
-#         # Validate that resolved_at is provided when status indicates resolution
-#         # (You'll need to implement this based on your status logic)
+    def _apply_business_logic(self, data):
+        """
+        Auto-set SLA, first_response_at, and calculate SLA breach
+        """
+        request = self.context.get("request")
+        instance = getattr(self, "instance", None)
 
-#         if errors:
-#             raise serializers.ValidationError(errors)
+        # Auto SLA due date
+        if data.get("priority") and not data.get("sla_due_date"):
+            sla_hours = getattr(data["priority"], "sla_hours", None)
+            if sla_hours:
+                data["sla_due_date"] = timezone.now() + timedelta(hours=sla_hours)
 
-#         return data
+        # First response timestamp
+        if instance and request and hasattr(request, "user") and request.user.is_staff:
+            if not getattr(instance, "first_response_at", None):
+                data["first_response_at"] = timezone.now()
 
-#     def validate_customerSatisfaction(self, value):
-#         """Additional validation for customer satisfaction"""
-#         if value is not None and value not in range(1, 6):
-#             raise serializers.ValidationError(
-#                 "Customer satisfaction rating must be between 1 and 5."
-#             )
-#         return value
+        # SLA breached calculation
+        first_response = data.get("first_response_at")
+        sla_due = data.get("sla_due_date")
+        if first_response and sla_due:
+            data["sla_breached"] = first_response > sla_due
+        elif "sla_breached" not in data:
+            data["sla_breached"] = False
 
+    def create(self, validated_data):
+        return Ticket.objects.create(**validated_data)
 
-# # Usage example in your view:
-# # serializer = TicketSerializer(
-# #     data=request.data,
-# #     context={
-# #         'menu_queryset': Menu.objects.all(),
-# #         'status_queryset': TicketStatus.objects.all(),
-# #         'priority_queryset': TicketPriority.objects.all(),
-# #         'account_queryset': Account.objects.all(),
-# #     }
-# # )
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
 
 
 class TicketListSerializer(serializers.Serializer):
     """Read-only serializer for Ticket"""
 
-    referenceId = serializers.CharField(source="referenceId", read_only=True)
+    referenceId = serializers.CharField(source="reference_id", read_only=True)
     ticketNumber = serializers.CharField(source="ticket_number", read_only=True)
-    title = serializers.CharField(read_only=True)
-    description = serializers.CharField(read_only=True)
 
-    # Expand related fields into human-readable values
+    # Human-readable relations
     menu = serializers.CharField(source="menu.menu_name", read_only=True)
     status = serializers.CharField(source="status.name", read_only=True)
     priority = serializers.CharField(source="priority.name", read_only=True)
     createdFor = serializers.CharField(source="created_for.username", read_only=True)
     assignedTo = serializers.CharField(source="assigned_to.username", read_only=True)
 
+    # DateTime fields
     responseDeadline = serializers.DateTimeField(
         source="response_deadline", read_only=True
     )
     dueDate = serializers.DateTimeField(source="due_date", read_only=True)
     resolvedAt = serializers.DateTimeField(source="resolved_at", read_only=True)
     slaDueDate = serializers.DateTimeField(source="sla_due_date", read_only=True)
+    createdAt = serializers.DateTimeField(source="created_at", read_only=True)
+    updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)
 
+    # Flags and ratings
     slaBreached = serializers.BooleanField(source="sla_breached", read_only=True)
     isEscalated = serializers.BooleanField(source="is_escalated", read_only=True)
-
     customerSatisfaction = serializers.IntegerField(
         source="customer_satisfaction", read_only=True
     )
-
-    createdAt = serializers.DateTimeField(source="created_at", read_only=True)
-    updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)

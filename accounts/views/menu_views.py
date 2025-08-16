@@ -44,6 +44,7 @@ class MenuListCreateApiView(BaseAPIView):
     def get(self, request):
         """Retrieve all menu items in hierarchical structure."""
         try:
+            print(Menu.objects.all().values_list('reference_id'))
             menus = build_group_hierarchy(is_active=True)
             data = {"menus": menus}
             return self.handle_success(None, data)

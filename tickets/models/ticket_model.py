@@ -37,7 +37,11 @@ class Ticket(BaseModel):
         blank=True,
         related_name="assigned_tickets",
     )
-
+    first_response_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when staff first responded to the ticket"
+    )
     # Deadlines
     response_deadline = models.DateTimeField(null=True, blank=True)
     due_date = models.DateTimeField(null=True, blank=True)  # resolution deadline
@@ -46,7 +50,7 @@ class Ticket(BaseModel):
     # SLA tracking
     sla_due_date = models.DateTimeField(null=True, blank=True)
     sla_breached = models.BooleanField(default=False)
-    is_escalated = models.BooleanField(default=False)
+    is_escalated = models.BooleanField(default=False, db_index=True)
 
     # Feedback
     customer_satisfaction = models.IntegerField(
