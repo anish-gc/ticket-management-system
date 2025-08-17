@@ -29,6 +29,11 @@ class RoleMenuPermission(BaseModel):
         verbose_name_plural = "Role Menu Permissions"
         unique_together = ("role", "menu")
         ordering = ["role_id", "menu_id"]
+        indexes = [
+            models.Index(fields=['menu', 'role']),
+            models.Index(fields=['can_view']),
+            models.Index(fields=['can_create', 'can_update', 'can_delete']),
+        ]
 
     def __str__(self):
         return f"{self.role} permissions for {self.menu}"

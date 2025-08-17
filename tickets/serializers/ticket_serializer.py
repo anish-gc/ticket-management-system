@@ -67,6 +67,7 @@ class TicketSerializer(serializers.Serializer):
         self._parse_datetime_fields(data)
         self._validate_deadline_order(data)
         self._apply_business_logic(data)
+        
         return data
 
     def _resolve_foreign_keys(self, data):

@@ -12,7 +12,7 @@ class Role(BaseModel):
     """
 
     name = models.CharField(
-        _("name"), max_length=150, help_text=_("The name of the role"), unique=True
+        _("name"), max_length=150, help_text=_("The name of the role"), unique=True,db_index=True,  
     )
 
     is_predefined = models.BooleanField(
@@ -25,7 +25,7 @@ class Role(BaseModel):
         verbose_name_plural = _("Roles")
         ordering = ["name"]
         indexes = [
-            models.Index(fields=["name"]),
+            models.Index(fields=["is_predefined", "name"]), 
         ]
 
     def __str__(self) -> str:

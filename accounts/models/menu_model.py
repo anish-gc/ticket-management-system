@@ -27,7 +27,13 @@ class Menu(BaseModel):
         ordering = ["display_order", "menu_name"]
         verbose_name = "Menu"
         verbose_name_plural = "Menus"
-
+        indexes = [
+        models.Index(fields=['visibility']),  
+        models.Index(fields=['menu_name']),  
+        models.Index(fields=['display_order', 'visibility']), 
+        models.Index(fields=['depth', 'parent']),  
+        models.Index(fields=['menu_url']),
+    ]
     def __str__(self):
         return self.menu_name
 

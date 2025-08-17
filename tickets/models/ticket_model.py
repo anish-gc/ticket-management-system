@@ -6,7 +6,7 @@ import datetime
 class Ticket(BaseModel):
     """Main ticket model"""
 
-    ticket_number = models.CharField(max_length=20, unique=True, editable=False)
+    ticket_number = models.CharField(max_length=20, unique=True, editable=False,  db_index=True)
     title = models.CharField(max_length=200)
     description = models.TextField()
     menu = models.ForeignKey(
@@ -49,7 +49,7 @@ class Ticket(BaseModel):
 
     # SLA tracking
     sla_due_date = models.DateTimeField(null=True, blank=True)
-    sla_breached = models.BooleanField(default=False)
+    sla_breached = models.BooleanField(default=False, db_index=True)
     is_escalated = models.BooleanField(default=False, db_index=True)
 
     # Feedback
@@ -66,6 +66,12 @@ class Ticket(BaseModel):
             models.Index(fields=["status", "priority"]),
             models.Index(fields=["assigned_to", "status"]),
             models.Index(fields=["created_at"]),
+            # Add these indexes:
+            models.Index(fields=["is_escalated", "status"]),  # For escalated ticket monitoring
+            models.Index(fields=["menu", "status"]),  # For menu-specific reporting
+            models.Index(fields=["due_date"]),  # For deadline queries
+            models.Index(fields=["sla_due_date"]),  # For SLA monitoring
+            models.Index(fields=["created_for", "status"]),  # For user ticket overviews
         ]
 
     def save(self, *args, **kwargs):

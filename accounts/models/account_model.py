@@ -23,7 +23,7 @@ class Account(AbstractBaseUser, BaseModel, PermissionsMixin):
     """
     username = models.CharField(max_length=50,unique=True, blank=False, null=False,   help_text="Required. 50 characters or fewer. Letters, digits and @/./+/-/_ only.")
     
-    email = models.EmailField(unique=True,  blank=True, null=True, help_text="Optional email address. Must be unique if provided.")
+    email = models.EmailField(unique=True,  blank=True, null=True,     db_index=True,   help_text="Optional email address. Must be unique if provided.")
     phone_number = models.CharField(max_length=10, unique=True,        help_text="Required. 10-digit phone number.")
     address = models.CharField(max_length=255, blank=True, help_text="Address of the user (e.g., Tilottama-3, Yogikuti, Shantichowk, near futsal Brahmapath)")  
     role = models.ForeignKey(Role, on_delete=models.PROTECT, related_name='accounts', blank=True, null=True)
@@ -37,14 +37,20 @@ class Account(AbstractBaseUser, BaseModel, PermissionsMixin):
     def save(self, *args, **kwargs):
         if self.email == "":
             self.email = None  # Convert empty string to None to handle unique constraint
-        
+        self.clean()  
         super().save(*args, **kwargs)
 
 
     class Meta:
         db_table = "accounts"
         ordering = ['-created_at']
-
+        verbose_name = 'Account'
+        verbose_name_plural = 'Accounts'
+        indexes = [
+            models.Index(fields=['role']), 
+            models.Index(fields=['is_staff']), 
+            models.Index(fields=['phone_number', 'is_active']),  
+        ]
     def __str__(self):
         return self.username
 
