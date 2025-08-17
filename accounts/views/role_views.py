@@ -13,11 +13,10 @@ from utilities.exception import CustomAPIException
 
 logger = logging.getLogger("django")
 
-
 class RoleCreateListApiView(BaseAPIView):
     """API endpoint for creating and listing roles."""
 
-    menu_url = "/role/"
+    menu_url = "/roles/"
 
     def get(self, request):
         """Retrieve all roles."""
@@ -35,7 +34,7 @@ class RoleCreateListApiView(BaseAPIView):
 class RoleDetailsApiView(BaseAPIView):
     """API endpoint for retrieving, updating, and deleting a specific role."""
 
-    menu_url = "/role/"
+    menu_url = "/roles/"
 
     def get(self, request, pk):
         """Retrieve a role by reference_id."""

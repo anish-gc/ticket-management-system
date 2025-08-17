@@ -58,6 +58,7 @@ class HandleResponseMixin:
             return Response(message, status=status.HTTP_200_OK)
         
         except Exception as exe:
+            print('iamhere')
             return HandleResponseMixin.handle_view_exception(exe)
     
     @staticmethod

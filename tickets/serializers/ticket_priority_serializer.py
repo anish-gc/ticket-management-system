@@ -21,8 +21,12 @@ class TicketPrioritySerializer(serializers.Serializer):
         allow_null=True,
         help_text="SLA response time in hours",
     )
+    isDefault = serializers.BooleanField(default=False, source="is_default")
+
 
     def create(self, validated_data):
+        if validated_data.get("is_default", False):
+            TicketPriority.objects.update(is_default=False)
         return TicketPriority.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
@@ -33,8 +37,12 @@ class TicketPrioritySerializer(serializers.Serializer):
         instance.color = validated_data.get("color", instance.color)
         instance.sla_hours = validated_data.get("sla_hours", instance.sla_hours)
 
-        instance.updated_by = self.context.get("user")
-        instance.updated_at = datetime.datetime.now()
+        if validated_data.get("is_default", instance.is_default):
+            TicketPriority.objects.update(is_default=False)
+            instance.is_default = True
+        else:
+            instance.is_default = validated_data.get("is_default", instance.is_default)
+
         instance.save()
         return instance
 
@@ -45,10 +53,8 @@ class TicketPrioritySerializer(serializers.Serializer):
         # Name uniqueness check
 
         qs_name = TicketPriority.objects.filter(name__iexact=name)
-        print(qs_name)
         if self.instance:
             qs_name = qs_name.exclude(reference_id=self.instance.reference_id)
-            print(qs_name)
         if qs_name.exists():
             raise serializers.ValidationError(
                 {

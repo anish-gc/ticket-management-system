@@ -116,9 +116,6 @@ class MenuSerializer(serializers.Serializer):
         # Update other fields
         for field, value in validated_data.items():
             setattr(instance, field, value)
-
-        instance.updated_by = self.context.get("user")
-        instance.updated_at = datetime.now()
         instance.save()
         return instance
 

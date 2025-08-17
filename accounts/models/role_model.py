@@ -51,4 +51,4 @@ class Role(BaseModel):
 
     def ensure_not_predefined(self):
         if self.is_predefined:
-            raise CustomAPIException("You cannot modify or delete default roles...")
+            raise CustomAPIException("You cannot modify or delete predefined roles...")

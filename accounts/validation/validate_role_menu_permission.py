@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 class RoleMenuPermissionConfig:
     """Configuration constants for role menu permissions"""
 
-    PERMISSION_FIELDS = ["isCreate", "isView", "isUpdate", "isDelete"]
+    PERMISSION_FIELDS = ["isCreate", "isView", "isEdit", "isDelete"]
     DEFAULT_PERMISSIONS = {
         "isCreate": False,
         "isView": True,  # Usually view should be default True
-        "isUpdate": False,
+        "isEdit": False,
         "isDelete": False,
     }
     BATCH_SIZE = 100
@@ -32,7 +32,7 @@ class RoleMenuPermissionConfig:
 
 
 class EnhancedRoleMenuPermissionService:
-    PERMISSION_FIELDS = ["isCreate", "isView", "isUpdate", "isDelete"]
+    PERMISSION_FIELDS = ["isCreate", "isView", "isEdit", "isDelete"]
 
     @classmethod
     def get_role_permissions(cls, role_id: str = None) -> List[Dict[str, Any]]:
@@ -84,7 +84,7 @@ class EnhancedRoleMenuPermissionService:
                     "menuId": perm["menu__reference_id"],
                     "isCreate": perm["can_create"],
                     "isView": perm["can_view"],
-                    "isUpdate": perm["can_update"],
+                    "isEdit": perm["can_update"],
                     "isDelete": perm["can_delete"],
                 }
             )
@@ -97,10 +97,8 @@ class EnhancedRoleMenuPermissionService:
     ) -> None:
         """Validate individual permission data"""
         item_ref = f" for item {index + 1}" if index is not None else ""
-
         if not permission_data.get("menuId"):
             raise CustomAPIException(f"Menu ID cannot be blank{item_ref}.")
-        print(f'permission data is {permission_data}')
         # Validate permission field types
         for field in cls.PERMISSION_FIELDS:
             value = permission_data.get(field)
@@ -126,6 +124,7 @@ class EnhancedRoleMenuPermissionService:
         if not isinstance(menu_details, list):
             raise CustomAPIException("Menu Details must be a list.")
 
+     
         # Check for duplicate menu IDs
         menu_ids = [
             detail.get("menuId") for detail in menu_details if detail.get("menuId")
@@ -175,7 +174,7 @@ class EnhancedRoleMenuPermissionService:
                         details, "isView"
                     ),
                     can_update=RoleMenuPermissionConfig.get_permission_value(
-                        details, "isUpdate"
+                        details, "isEdit"
                     ),
                     can_delete=RoleMenuPermissionConfig.get_permission_value(
                         details, "isDelete"
@@ -184,7 +183,6 @@ class EnhancedRoleMenuPermissionService:
                     created_at=current_time,
                 )
             )
-
         return role_menu_permissions
 
     @classmethod
@@ -194,7 +192,6 @@ class EnhancedRoleMenuPermissionService:
         """Complete workflow for assigning permissions to a role"""
         # Validate role
         role = model_validation(Role, "Select a valid role.", {"reference_id": role_id})
-
         # Validate menu details
         cls.validate_menu_details(menu_details)
 

@@ -32,13 +32,11 @@ class TicketStatusSerializer(serializers.Serializer):
     isDefault = serializers.BooleanField(default=False, source="is_default")
 
     def create(self, validated_data):
-        print(validated_data)
         if validated_data.get("is_default", False):
             TicketStatus.objects.update(is_default=False)
         return TicketStatus.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
-        print(validated_data)
         instance.name = validated_data.get("name", instance.name)
         instance.code = validated_data.get("code", instance.code)
         instance.description = validated_data.get("description", instance.description)

@@ -38,5 +38,12 @@ class Menu(BaseModel):
         return self.menu_name
 
 
+    def save(self, *args, **kwargs):
+        # Set depth based on parent
+        if self.parent:
+            self.depth = self.parent.depth + 1
+        else:
+            self.depth = 0
+        super().save(*args, **kwargs)
 
 

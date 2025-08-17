@@ -16,7 +16,7 @@ logger = logging.getLogger("django")
 
 
 class AccountRoleMappingCreateListApiView(BaseAPIView):
-    menu_url = "/role/mapping/"
+    menu_url = "/account/roles/mapping/"
 
     def get(self, request):
         try:
@@ -57,14 +57,16 @@ class AccountRoleMappingCreateListApiView(BaseAPIView):
 
 
 class AccountRoleMappingDetailsApiView(BaseAPIView):
-    menu_url = "/role/mapping/"
+    menu_url = "/account/roles/mapping/"
 
     def get(self, request, pk):
         try:
             user = Account.objects.get(reference_id=pk)
             user_role_data = {
                 "userId": user.reference_id,
+                "userName": user.username,
                 "roleId": user.role.reference_id,
+                "role": user.role.name,
             }
             return self.handle_success(None, user_role_data)
 

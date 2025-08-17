@@ -9,6 +9,7 @@ class RoleSerializer(serializers.Serializer):
     name = serializers.CharField(
         error_messages={"required": "Role name can not be blank."}
     )
+    isPredefined = serializers.BooleanField(default=False, source="is_predefined")
 
     def create(self, validated_data):
         return Role.objects.create(**validated_data)
@@ -28,6 +29,7 @@ class RoleSerializer(serializers.Serializer):
 
         qs = Role.objects.filter(name__iexact=role_name)
         if self.instance:
+
             qs = qs.exclude(reference_id=self.instance.reference_id)
 
         if qs.exists():
@@ -46,5 +48,4 @@ class RoleSerializer(serializers.Serializer):
 
 class RoleListSerializer(serializers.Serializer):
     referenceId = serializers.CharField(source="reference_id", read_only=True)
-    name = serializers.CharField( read_only=True)
-
+    name = serializers.CharField(read_only=True)
