@@ -25,7 +25,14 @@ class AccountCreateListApiView(BaseAPIView):
     menu_url = "/accounts/"
 
     def get(self, request):
-        return self.handle_serializer_data(Account, AccountListSerializer,  {"is_active": True})
+
+        account_data = self.handle_serializer_data(Account, AccountListSerializer,  {"is_active": True})
+
+        tickets_data = self.get_menu_tickets()
+        return self.handle_success({
+            "account_data": account_data.data,
+            "tickets": tickets_data
+        })
 
     def post(self, request):
         """Create a new User."""

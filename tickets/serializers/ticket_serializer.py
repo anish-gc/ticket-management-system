@@ -72,17 +72,20 @@ class TicketSerializer(serializers.Serializer):
 
     def _resolve_foreign_keys(self, data):
         fk_mapping = {
-            "menu": Menu,
-            "status": TicketStatus,
-            "priority": TicketPriority,
-            "created_for": Account,
-            "assigned_to": Account,
+            "menu": (Menu, "Invalid menu selected."),
+            "status": (TicketStatus, "Invalid ticket status."),
+            "priority": (TicketPriority, "Invalid ticket priority."),
+            "created_for": (Account, "Invalid customer account."),
+            "assigned_to": (Account, "Invalid assigned staff."),
         }
-        for field, model in fk_mapping.items():
+
+        for field, (model, error_msg) in fk_mapping.items():
             ref_id = data.get(field)
             if ref_id:
                 data[field] = model_validation(
-                    model, f"Select a valid {field}", {"reference_id": ref_id}
+                    model,
+                    error_msg,   # 👈 custom message per field
+                    {"reference_id": ref_id},
                 )
 
     def _parse_datetime_fields(self, data):
