@@ -66,11 +66,11 @@ def confirm_login_details(user: Account) -> Dict[str, Any]:
             "sessionTime": settings.SIMPLE_JWT.get(
                 "ACCESS_TOKEN_LIFETIME"
             ).total_seconds()
-            / 60,
+            / 3600,
             "menu": (
                 get_menu_structure(None, is_superuser=True)
                 if user.is_superuser
-                else get_menu_structure(user.role.id, is_superuser=False)
+                else get_menu_structure(user.role.id, is_superuser=False, user_id=user.id)
             ),
         }
         return auth_data

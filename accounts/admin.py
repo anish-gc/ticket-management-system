@@ -7,6 +7,7 @@ from accounts.models import RoleMenuPermission
 from .models import Role
 from django.contrib.auth.admin import UserAdmin
 from accounts.models import Account
+from accounts.models import UserMenuAssignment
 
 
 @admin.register(Account)
@@ -103,3 +104,14 @@ class RoleMenuPermissionAdmin(admin.ModelAdmin):
     list_filter = ("role", "menu", "can_create", "can_view", "can_update", "can_delete")
     search_fields = ("role__name", "menu__menu_name")
     ordering = ("role", "menu")
+
+
+
+@admin.register(UserMenuAssignment)
+class UserMenuAssignmentAdmin(admin.ModelAdmin):
+    list_display = ("id", "account", "menu", "assigned_by", "assigned_at")
+    list_filter = ("assigned_by", "assigned_at")
+    search_fields = ("account__username", "account__email", "menu__name")
+    ordering = ("-assigned_at",)
+    autocomplete_fields = ("account", "menu", "assigned_by")
+    date_hierarchy = "assigned_at"
