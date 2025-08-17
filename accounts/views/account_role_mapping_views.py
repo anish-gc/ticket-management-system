@@ -16,7 +16,7 @@ logger = logging.getLogger("django")
 
 
 class AccountRoleMappingCreateListApiView(BaseAPIView):
-    menu_url = "/account/roles/mapping/"
+    menu_url = "/account/role/mapping/"
 
     def get(self, request):
         try:
@@ -57,7 +57,7 @@ class AccountRoleMappingCreateListApiView(BaseAPIView):
 
 
 class AccountRoleMappingDetailsApiView(BaseAPIView):
-    menu_url = "/account/roles/mapping/"
+    menu_url = "/account/role/mapping/"
 
     def get(self, request, pk):
         try:

@@ -22,8 +22,7 @@ class AccountCreateListApiView(BaseAPIView):
     Retrieves a list of all active users. This view requires custom authentication and permissions.
     """
 
-    menu_url = "/account/"
-    action = "L"
+    menu_url = "/accounts/"
 
     def get(self, request):
         return self.handle_serializer_data(Account, AccountListSerializer,  {"is_active": True})
@@ -32,7 +31,9 @@ class AccountCreateListApiView(BaseAPIView):
         """Create a new User."""
         serializer = AccountSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
-            serializer.save(created_by=request.user, created_at=datetime.now())
+            account = serializer.save(created_by=request.user, created_at=datetime.now())
+            account.set_password(self.request.data['password'])
+
             return self.handle_success("Account created successfully.")
         return self.handle_invalid_serializer(serializer)
 
@@ -40,7 +41,7 @@ class AccountCreateListApiView(BaseAPIView):
 class AccountDetailsApiView(BaseAPIView):
     """API endpoint for retrieving, updating, and deleting a specific account."""
 
-    menu_url = "/account/"
+    menu_url = "/accounts/"
 
     def get(self, request, pk):
         """Retrieve a account by reference_id."""
