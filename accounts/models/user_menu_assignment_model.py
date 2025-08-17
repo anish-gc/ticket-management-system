@@ -3,7 +3,9 @@
 from accounts.models.account_model import Account
 from django.db import models
 
-class UserMenuAssignment(models.Model):
+from utilities.models import BaseModel
+
+class UserMenuAssignment(BaseModel):
     """Assign specific menu sets to users"""
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='menu_assignments')
     menu = models.ForeignKey('accounts.Menu', on_delete=models.CASCADE, null=True, blank=True)
