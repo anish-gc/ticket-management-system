@@ -83,10 +83,10 @@ DB_PASSWORD=your_password
 DB_HOST=localhost
 DB_PORT=5432
 ```
-### 6. Restore the backup from the file ticket_management_system.backup using command.After restore, you dont need to run makemigrations and migrate. It contains superuser, role, menu.    Skip step 7, 8, 9  if you follow this step
+### 6. Restore the backup from the file ticket_management_system.backup using command.After restore, you dont need to run makemigrations and migrate. It contains superuser, role, menu.    Skip step 7, 8, 9  if you follow this step. Replace ticket_management_system with ur db_name
 
 ```bash
-pg_restore -h localhost -U postgres -W -d new_ticket_management_system ticket_management_system.backup
+pg_restore -h localhost -U postgres -W -d ticket_management_system ticket_management_system.backup
 
 ```
 ### 7. Run Migrations(only if u didnot follow step 6)
@@ -96,13 +96,13 @@ python manage.py makemigrations
 python manage.py migrate
 ```
 
-### 8. Create a Superuser
+### 8. Create a Superuser(only if u didnot follow step 6)
 
 ```bash
 python manage.py createsuperuser
 ```
 
-### 9. Run this base commands sequentially
+### 9. Run this base commands sequentially (only if u didnot follow step 6)
 
 ```bash
 python manage.py seed_predefined_roles
@@ -319,7 +319,10 @@ The application should now be accessible at http://localhost:8000.
 ## Tickets
 
 ### Ticket Management
-
+```
+Ticked can be filtered by params like menu_id, status(?status=OPEN&status=IN_PROGRESS),priority(?priority=critical), 
+sla_breached, escalated, order_by(?order_by=importance,deadline, sla, created_by, priority)
+```
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/tickets/` | GET, POST | List all tickets or create new ticket |
