@@ -12,7 +12,10 @@ class UserMenuAssignment(BaseModel):
     assigned_by = models.ForeignKey('accounts.Account', on_delete=models.SET_NULL, null=True, related_name='menu_assignments_made')
     assigned_at = models.DateTimeField(auto_now_add=True)
     
-    
+    can_view = models.BooleanField(default=True)
+    can_create = models.BooleanField(default=False)
+    can_update = models.BooleanField(default=False)
+    can_delete = models.BooleanField(default=False)
     class Meta:
         db_table = "user_menu_assignments"
         verbose_name = "User Menu Assignment"

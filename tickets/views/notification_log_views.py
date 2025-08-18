@@ -19,9 +19,10 @@ logger = logging.getLogger("django")
 class NotificationLogsListApiView(BaseAPIView):
     """API endpoint for  listing notification logs."""
 
-    menu_url = "/nofification-logs/"
+    menu_url = "/notification-logs/"
 
     def get(self, request):
+        print('iamhere')
         """Retrieve all notification logs."""
         return self.handle_serializer_data(
             NotificationLog, NotificationLogReadSerializer, True
@@ -31,7 +32,7 @@ class NotificationLogsListApiView(BaseAPIView):
 class NotificationLogDetailsApiView(BaseAPIView):
     """API endpoint for retrieving and deleting a specific notification log."""
 
-    menu_url = "/nofification-logs/"
+    menu_url = "/notification-logs/"
 
     def get(self, request, pk):
         """Retrieve a notification log by reference_id."""

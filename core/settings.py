@@ -107,7 +107,7 @@ REST_FRAMEWORK = {
         "utilities.jwt_authentication.CustomJWTAuthentication",
     },
     "DEFAULT_PERMISSION_CLASSES": {
-        "utilities.permission.CustomPermission",
+        "utilities.permission.EnhancedCustomPermission",
     },
     "EXCEPTION_HANDLER": "utilities.exception.custom_exception_handler",
     "DEFAULT_RENDERER_CLASSES": [

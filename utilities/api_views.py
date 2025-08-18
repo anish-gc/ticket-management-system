@@ -9,7 +9,7 @@ from tickets.serializers.ticket_serializer import TicketListSerializer
 from tickets.ticket_manager import TicketFilterManager
 from utilities.custom_response import HandleResponseMixin
 from utilities.jwt_authentication import CustomJWTAuthentication
-from utilities.permission import CustomPermission 
+from utilities.permission import CustomPermission, EnhancedCustomPermission 
 
 logger = logging.getLogger("django")
 
@@ -22,7 +22,7 @@ class BaseAPIView(APIView, HandleResponseMixin):
     menu_url = ""  
     action = ""
     authentication_classes = [CustomJWTAuthentication]
-    permission_classes = [CustomPermission]
+    permission_classes = [EnhancedCustomPermission]
 
     def get_menu_tickets(self, **filter_kwargs):
         """
