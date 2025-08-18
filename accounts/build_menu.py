@@ -160,6 +160,9 @@ def build_user_assigned_menu_item(menu, user_id):
         }
     )
     
+    # Option 2: If you want to extend UserMenuAssignment model to include permissions
+    # you could add permission fields to UserMenuAssignment and use them here
+    
     user_assignment = UserMenuAssignment.objects.filter(
         account_id=user_id, menu=menu
     ).first()
@@ -185,9 +188,6 @@ def build_user_assigned_menu_item(menu, user_id):
             }
         )
 
-    # Option 2: If you want to extend UserMenuAssignment model to include permissions
-    # you could add permission fields to UserMenuAssignment and use them here
-    
     # Option 3: If you want to inherit role permissions when available
     # Uncomment the code below:
     """

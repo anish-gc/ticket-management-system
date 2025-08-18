@@ -23,10 +23,19 @@ class UserMenuAssignmentCreateListApiView(BaseAPIView):
 
     def get(self, request):
         """Retrieve all user menu assignments."""
-        return self.handle_serializer_data(
-            UserMenuAssignment, UserMenuAssignmentListSerializer, True
-        )
-
+        user_menu_assignment_data = self.get_serializer_data(
+            UserMenuAssignment, 
+            UserMenuAssignmentListSerializer, 
+            request=self.request,  
+            paginate=True,  # Enable pagination
+            is_active=True
+        )   
+        tickets_data = self.get_menu_tickets()
+        return self.handle_success({
+            "userMenuAssignmentdata": user_menu_assignment_data,
+            "ticketsData": tickets_data
+        })
+       
     def post(self, request):
         """Create a new role."""
         serializer = UserMenuAssignmentSerializer(

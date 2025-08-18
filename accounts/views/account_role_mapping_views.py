@@ -30,7 +30,12 @@ class AccountRoleMappingCreateListApiView(BaseAPIView):
                 .values("accountId", "username", "roleId", "roleName")
             )
 
-            return self.handle_success(None, list(user_role_data))
+            tickets_data = self.get_menu_tickets()
+            data = {
+                'userRoleData': list(user_role_data),
+                "ticketsData": tickets_data
+            }
+            return self.handle_success(None, data)
         except Exception as exc:
             return self.handle_exception(exc)
 

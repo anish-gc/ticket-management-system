@@ -13,6 +13,7 @@ from utilities.exception import CustomAPIException
 
 logger = logging.getLogger("django")
 
+
 class RoleCreateListApiView(BaseAPIView):
     """API endpoint for creating and listing roles."""
 
@@ -20,7 +21,12 @@ class RoleCreateListApiView(BaseAPIView):
 
     def get(self, request):
         """Retrieve all roles."""
-        return self.handle_serializer_data(Role, RoleListSerializer, True)
+        role_data = self.get_serializer_data(Role, RoleListSerializer, is_active=True)
+        tickets_data = self.get_menu_tickets()
+        return self.handle_success({
+            "roleDate": role_data,
+            "ticketsData": tickets_data
+        })
 
     def post(self, request):
         """Create a new role."""
@@ -65,4 +71,4 @@ class RoleDetailsApiView(BaseAPIView):
         except CustomAPIException as exe:
             return self.handle_custom_exception(exe)
         except Exception as exe:
-            return self.handle_view_exception(exe)      
+            return self.handle_view_exception(exe)

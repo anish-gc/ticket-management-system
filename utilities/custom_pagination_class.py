@@ -86,8 +86,6 @@ class CustomPagination(PageNumberPagination):
         Return a paginated style Response object for the given output data.
         """
         return Response({
-            'responseCode': "0",
-            'message': "Success",
             'results': data,
             'count': self.page.paginator.count,
             'pageSize': self.get_page_size(self.request),

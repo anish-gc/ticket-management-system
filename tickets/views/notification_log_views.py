@@ -22,8 +22,16 @@ class NotificationLogsListApiView(BaseAPIView):
     menu_url = "/notification-logs/"
 
     def get(self, request):
-        print('iamhere')
         """Retrieve all notification logs."""
+        notifcation_logs = self.get_serializer_data(
+            NotificationLog, NotificationLogReadSerializer,  self.request,  True, True, **{'is_active': True}
+        )
+
+        tickets_data = self.get_menu_tickets()
+        return self.handle_success({
+            "notifcationData": notifcation_logs,
+            "ticketsData": tickets_data
+        })
         return self.handle_serializer_data(
             NotificationLog, NotificationLogReadSerializer, True
         )

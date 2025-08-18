@@ -19,7 +19,7 @@ urlpatterns = [
     # menu model
     path("menus/", MenuListCreateApiView.as_view(), name="menu-create-list"),
     path("menu/<pk>/", MenuDetailsApiView.as_view(), name="menu-details"),
-
+    
     path("account/roles/mapping/", AccountRoleMappingCreateListApiView.as_view(), name='account-role-mapping-create-list'),
     path("account/role/mapping/<pk>/", AccountRoleMappingDetailsApiView.as_view(), name='account-role-mapping-detail'),
 
