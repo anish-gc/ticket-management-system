@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from accounts.models.menu_model import Menu
 from tickets.models.ticket_model import Ticket
 from tickets.serializers.ticket_serializer import TicketListSerializer
+from tickets.ticket_manager import TicketFilterManager
 from utilities.custom_response import HandleResponseMixin
 from utilities.jwt_authentication import CustomJWTAuthentication
 from utilities.permission import CustomPermission 
@@ -23,18 +24,26 @@ class BaseAPIView(APIView, HandleResponseMixin):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [CustomPermission]
 
-    def get_menu_tickets(self):
-        """Return tickets related to this view's menu_url"""
+    def get_menu_tickets(self, **filter_kwargs):
+        """
+        Return tickets related to this view's menu_url with optional filtering
+        
+        Args:
+            **filter_kwargs: Additional filtering parameters for TicketFilterManager
+        """
         if not self.menu_url:
             return []
 
         try:
+            from accounts.models import Menu
             menu = Menu.objects.get(menu_url=self.menu_url)
-            tickets = Ticket.objects.filter(menu=menu)
+            tickets = TicketFilterManager.get_filtered_tickets(
+                menu=menu,
+                **filter_kwargs
+            )
             return TicketListSerializer(tickets, many=True).data
         except Menu.DoesNotExist:
             return []
-
     def initialize_action(self, method):
         """
         Dynamically set the action attribute based on the HTTP method.

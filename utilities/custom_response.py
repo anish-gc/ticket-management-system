@@ -61,6 +61,27 @@ class HandleResponseMixin:
             return HandleResponseMixin.handle_view_exception(exe)
     
     @staticmethod
+    def get_serializer_data(model, serializer_class, many=True, **query):
+        """
+        Get serialized data without response wrapper.
+        Args:
+            model (Model): The Django model to query.
+            serializer_class (Serializer): The serializer class to use.
+            many (bool, optional): Whether to handle multiple objects (default is True).
+            **query: Additional query parameters for filtering the queryset.
+        """
+        try:
+            if many:
+                model_instance = model.objects.filter(**query)
+                return serializer_class(model_instance, many=True).data
+            else:
+                model_instance = model.objects.get(**query)
+                return serializer_class(model_instance).data
+        
+        except Exception as exe:
+            return HandleResponseMixin.handle_view_exception(exe)
+
+    @staticmethod
     def api_handle_exception():
         """
         Handle general API exceptions and return a server error response.
