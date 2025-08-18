@@ -114,14 +114,14 @@ python manage.py grant_admin_menu_permissions
 
 ```bash
 python manage.py runserver
+The application should now be accessible at http://localhost:8000.
 ```
 
-The application should now be accessible at http://localhost:8000.
 
-mission for role by visiting
 ```
 ## 🗂️ Project Structure
 
+```
 ```
 ├── accounts
 │   ├── account_manager.py
