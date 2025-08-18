@@ -47,7 +47,7 @@ ROOT_URLCONF = "core.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": ['templates'],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -145,15 +145,18 @@ LOGGING = {
     },
 }
 
-DEFAULT_FROM_EMAIL = "Jewelry <anishgharti10@gmail.com>"
-EMAIL_HOST_USER = "spicyh166@gmail.com"
-EMAIL_HOST_PASSWORD = "zjcncrapjofwrrdz"
+EMAIL_HOST_USER = "anishgharti10@gmail.com"
+EMAIL_HOST_PASSWORD = "slthmlmixlkpkmcp"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+ADMIN_EMAIL = 'anishgharti10@gmail.com'  # admin email
+# Site configuration
+SITE_URL = 'http://localhost:8000'  
+COMPANY_NAME = 'Ek Ghanti'  
+
 
 PAGE_SIZE = 10
-
 
 from .jwt_behaviour import *
 

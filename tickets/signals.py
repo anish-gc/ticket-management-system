@@ -2,7 +2,7 @@
 import logging
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-from django.contrib.auth import get_user_model
+from django.utils import timezone
 from .models.ticket_model import Ticket
 
 logger = logging.getLogger("django")
@@ -21,6 +21,9 @@ def store_previous_ticket_state(sender, instance, **kwargs):
                 "assigned_to": previous.assigned_to,
                 "status": previous.status,
                 "priority": previous.priority,
+                "title": previous.title,
+                "description": previous.description,
+                "due_date": previous.due_date,
             }
         except Ticket.DoesNotExist:
             pass
@@ -30,6 +33,9 @@ def store_previous_ticket_state(sender, instance, **kwargs):
             "assigned_to": None,
             "status": None,
             "priority": None,
+            "title": None,
+            "description": None,
+            "due_date": None,
         }
 
 
@@ -51,28 +57,55 @@ def ticket_notification_handler(sender, instance, created, **kwargs):
                 )
 
             # Check for other updates (status, priority, etc.)
-            if (
-                previous_state["status"] != instance.status
-                or previous_state["priority"] != instance.priority
-            ):
-                send_ticket_updated_notification(instance, previous_state)
+            changes = detect_ticket_changes(instance, previous_state)
+            if changes:
+                send_ticket_updated_notification(instance, previous_state, changes)
 
         # Clean up stored state
         if instance.pk in _ticket_previous_state:
             del _ticket_previous_state[instance.pk]
 
 
+def detect_ticket_changes(ticket, previous_state):
+    """Detect and format changes made to the ticket."""
+    changes = []
+
+    if previous_state["status"] != ticket.status:
+        changes.append(
+            f"Status changed from '{previous_state['status']}' to '{ticket.status}'"
+        )
+
+    if previous_state["priority"] != ticket.priority:
+        changes.append(
+            f"Priority changed from '{previous_state['priority']}' to '{ticket.priority}'"
+        )
+
+    if previous_state["title"] != ticket.title:
+        changes.append(f"Title updated")
+
+    if previous_state["due_date"] != ticket.due_date:
+        if previous_state["due_date"] is None:
+            changes.append(f"Due date set to {ticket.due_date.strftime('%B %d, %Y')}")
+        elif ticket.due_date is None:
+            changes.append(f"Due date removed")
+        else:
+            changes.append(
+                f"Due date changed to {ticket.due_date.strftime('%B %d, %Y')}"
+            )
+
+    return changes
+
+
 def send_ticket_created_notification(ticket):
     """Send notification when a ticket is created."""
     title = f"New Ticket Created: {ticket.title}"
     message = f"🎫 A new ticket has been created:\n\nTitle: {ticket.title}\nID: {ticket.reference_id}\nPriority: {ticket.priority}\nStatus: {ticket.status}"
-
     # Console log
     logger.info(f"NOTIFICATION - TICKET CREATED: {title}")
     print(f"[NOTIFICATION] {title}")
 
-    # Database log using your NotificationLog model
-    log_notification_to_db(
+    # Database log
+    recipients = log_notification_to_db(
         notification_type="ticket_created",
         ticket=ticket,
         title=title,
@@ -80,25 +113,21 @@ def send_ticket_created_notification(ticket):
         sender=getattr(ticket, "created_by", None),
     )
 
-    # Optional: Add email notification logic here
-    # send_email_notification("ticket_created", ticket, message)
+    # Send email notifications
+    send_email_notifications_for_ticket(
+        notification_type="ticket_created", ticket=ticket, recipients=recipients
+    )
 
 
-def send_ticket_updated_notification(ticket, previous_state):
+def send_ticket_updated_notification(ticket, previous_state, changes):
     """Send notification when a ticket is updated."""
-    changes = []
-    notification_type = "ticket_updated"  # default
+    notification_type = "ticket_updated"
 
-    if previous_state["status"] != ticket.status:
-        changes.append(f"Status: {previous_state['status']} → {ticket.status}")
+    # Determine specific notification type based on changes
+    if any("Status changed" in change for change in changes):
         notification_type = "status_changed"
-
-    if previous_state["priority"] != ticket.priority:
-        changes.append(f"Priority: {previous_state['priority']} → {ticket.priority}")
-        if (
-            notification_type == "ticket_updated"
-        ):  # Only change if not already status_changed
-            notification_type = "priority_changed"
+    elif any("Priority changed" in change for change in changes):
+        notification_type = "priority_changed"
 
     changes_text = ", ".join(changes) if changes else "General update"
     title = f"Ticket Updated: {ticket.title}"
@@ -109,7 +138,7 @@ def send_ticket_updated_notification(ticket, previous_state):
     print(f"[NOTIFICATION] {title} - {changes_text}")
 
     # Database log
-    log_notification_to_db(
+    recipients = log_notification_to_db(
         notification_type=notification_type,
         ticket=ticket,
         title=title,
@@ -117,8 +146,13 @@ def send_ticket_updated_notification(ticket, previous_state):
         sender=getattr(ticket, "updated_by", None),
     )
 
-    # Optional: Email notification
-    # send_email_notification("ticket_updated", ticket, message)
+    # Send email notifications
+    send_email_notifications_for_ticket(
+        notification_type=notification_type,
+        ticket=ticket,
+        recipients=recipients,
+        changes=changes,
+    )
 
 
 def send_ticket_assignment_notification(ticket, previous_assignee, new_assignee):
@@ -137,7 +171,7 @@ def send_ticket_assignment_notification(ticket, previous_assignee, new_assignee)
         # Unassigned
         title = f"Ticket Unassigned: {ticket.title}"
         message = f"❌ Ticket has been unassigned:\n\nTitle: {ticket.title}\nID: {ticket.reference_id}\nPreviously assigned to: {previous_assignee}"
-        notification_type = "ticket_reassigned"  # Using reassigned type as unassigned isn't in your model
+        notification_type = "ticket_reassigned"
     else:
         return  # No change
 
@@ -146,7 +180,7 @@ def send_ticket_assignment_notification(ticket, previous_assignee, new_assignee)
     print(f"[NOTIFICATION] {title}")
 
     # Database log
-    log_notification_to_db(
+    recipients = log_notification_to_db(
         notification_type=notification_type,
         ticket=ticket,
         title=title,
@@ -154,76 +188,60 @@ def send_ticket_assignment_notification(ticket, previous_assignee, new_assignee)
         sender=getattr(ticket, "updated_by", None),
     )
 
-    # Optional: Email notification
-    # send_email_notification("ticket_assignment", ticket, message,
-    #                        previous_assignee=previous_assignee, new_assignee=new_assignee)
-
-
-def log_notification(notification_type, ticket, message):
-    """Legacy function - kept for backward compatibility."""
-    # Redirect to the new enhanced function
-    log_notification_to_db(
-        notification_type=notification_type.lower(),
+    # Send email notifications
+    send_email_notifications_for_ticket(
+        notification_type=notification_type,
         ticket=ticket,
-        title=f"Ticket {ticket.reference_id}",
-        message=message,
+        recipients=recipients,
+        previous_assignee=previous_assignee,
+        new_assignee=new_assignee,
     )
 
 
-# Optional: Email notification function
-def send_email_notification(notification_type, ticket, message, **kwargs):
-    """Send email notification (optional implementation)."""
-    from django.core.mail import send_mail
-    from django.conf import settings
+def send_email_notifications_for_ticket(
+    notification_type, ticket, recipients, **extra_data
+):
+    """
+    Send email notifications to all recipients for a ticket event.
 
-    # Determine recipients based on notification type
-    recipients = []
+    Args:
+        notification_type: Type of notification
+        ticket: Ticket instance
+        recipients: List of user objects to notify
+        **extra_data: Additional data for the email template
+    """
+    if not recipients:
+        return
 
-    if notification_type == "ticket_created":
-        # Notify admin/support team
-        recipients = [settings.ADMIN_EMAIL] if hasattr(settings, "ADMIN_EMAIL") else []
-    elif notification_type == "ticket_assignment":
-        # Notify the assigned user
-        if ticket.assigned_to and ticket.assigned_to.email:
-            recipients.append(ticket.assigned_to.email)
-    elif notification_type == "ticket_updated":
-        # Notify ticket creator and assigned user
-        if ticket.created_for and ticket.created_for.email:
-            recipients.append(ticket.created_for.email)
-        if ticket.assigned_to and ticket.assigned_to.email:
-            recipients.append(ticket.assigned_to.email)
+    from .utils.email_utils import send_ticket_notification_email
 
-    if recipients:
-        try:
-            send_mail(
-                subject=f"Ticket Notification: {ticket.title}",
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=recipients,
-                fail_silently=True,
-            )
-            logger.info(f"Email sent for {notification_type} to {recipients}")
-        except Exception as e:
-            logger.error(f"Failed to send email notification: {e}")
+    successful_sends = 0
+    failed_sends = 0
 
+    for recipient in recipients:
+        if recipient and recipient.email:
+            try:
+                success = send_ticket_notification_email(
+                    user=recipient,
+                    notification_type=notification_type,
+                    ticket=ticket,
+                    **extra_data,
+                )
+                if success:
+                    successful_sends += 1
+                else:
+                    failed_sends += 1
 
-# tickets/apps.py
-from django.apps import AppConfig
+            except Exception as e:
+                logger.error(f"Failed to send email to {recipient.email}: {e}")
+                failed_sends += 1
 
-
-class TicketsConfig(AppConfig):
-    default_auto_field = "django.db.models.BigAutoField"
-    name = "tickets"
-
-    def ready(self):
-        # Import signals when the app is ready
-        import tickets.signals
+    logger.info(
+        f"Email notifications for {notification_type}: {successful_sends} sent, {failed_sends} failed"
+    )
 
 
 # Enhanced notification logging functions using your NotificationLog model
-from django.utils import timezone
-
-
 def log_notification_to_db(
     notification_type, ticket, title, message, sender=None, recipients=None
 ):
@@ -237,6 +255,9 @@ def log_notification_to_db(
         message: Full content of the notification
         sender: Account who triggered the notification (optional)
         recipients: List of Account instances or single Account (optional, auto-determined if None)
+
+    Returns:
+        List of recipient users for email notifications
     """
     try:
         from tickets.models.notification_log_model import NotificationLog
@@ -269,7 +290,8 @@ def log_notification_to_db(
         logger.info(
             f"Created {len(notifications_created)} notification(s) for {notification_type} - ticket {ticket.reference_id}"
         )
-        return notifications_created
+
+        return recipients  # Return recipients for email sending
 
     except Exception as e:
         logger.error(f"Failed to log notification to database: {e}")
@@ -289,7 +311,7 @@ def determine_notification_recipients(notification_type, ticket, sender=None):
         if notification_type == "ticket_created":
             if ticket.assigned_to:
                 recipients.append(ticket.assigned_to)
-            # You can add admin notification logic here
+            # Add admin notification logic here if needed
             # recipients.extend(get_admin_users())
 
         # Ticket assigned/reassigned - notify the assigned user
@@ -335,7 +357,7 @@ def get_admin_users():
         from accounts.models import Account
 
         # Adjust this query based on your admin user identification logic
-        return Account.objects.filter(role='admin', is_active=True)
+        return Account.objects.filter(role="admin", is_active=True)
     except Exception as e:
         logger.error(f"Error fetching admin users: {e}")
         return []
@@ -365,3 +387,75 @@ def mark_notification_as_read(notification_id, user):
     except Exception as e:
         logger.error(f"Error marking notification as read: {e}")
         return None
+
+
+
+
+def get_unread_notifications_count(user):
+    """Get count of unread notifications for a user."""
+    try:
+        from tickets.models.notification_log_model import NotificationLog
+
+        return NotificationLog.objects.filter(recipient=user, is_read=False).count()
+    except Exception as e:
+        logger.error(f"Error getting unread notifications count: {e}")
+        return 0
+
+
+def mark_all_notifications_as_read(user):
+    """Mark all notifications as read for a user."""
+    try:
+        from tickets.models.notification_log_model import NotificationLog
+
+        updated = NotificationLog.objects.filter(recipient=user, is_read=False).update(
+            is_read=True, read_at=timezone.now()
+        )
+
+        logger.info(f"Marked {updated} notifications as read for {user}")
+        return updated
+
+    except Exception as e:
+        logger.error(f"Error marking all notifications as read: {e}")
+        return 0
+
+
+def send_due_date_reminders():
+    """
+    Function to send reminders for tickets approaching due date.
+    This can be called by a cron job or Celery task.
+    """
+    try:
+        from datetime import timedelta
+
+        # Get tickets due within next 24 hours
+        tomorrow = timezone.now() + timedelta(days=1)
+        tickets_due_soon = Ticket.objects.filter(
+            due_date__lte=tomorrow,
+            due_date__gte=timezone.now(),
+            status__in=["open", "in_progress"],  # Only active tickets
+        )
+
+        for ticket in tickets_due_soon:
+            title = f"Due Date Reminder: {ticket.title}"
+            message = f"⏰ Reminder: This ticket is due soon.\n\nTitle: {ticket.title}\nID: {ticket.reference_id}\nDue: {ticket.due_date.strftime('%B %d, %Y')}"
+
+            # Log to database
+            recipients = log_notification_to_db(
+                notification_type="due_date_approaching",
+                ticket=ticket,
+                title=title,
+                message=message,
+            )
+
+            # Send email notifications
+            send_email_notifications_for_ticket(
+                notification_type="due_date_approaching",
+                ticket=ticket,
+                recipients=recipients,
+            )
+
+        logger.info(f"Processed due date reminders for {len(tickets_due_soon)} tickets")
+
+    except Exception as e:
+        logger.error(f"Error sending due date reminders: {e}")
+

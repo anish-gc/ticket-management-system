@@ -1,5 +1,6 @@
 from django.urls import path
 
+from tickets.views.notification_log_views import NotificationLogDetailsApiView, NotificationLogsListApiView
 from tickets.views.ticket_priority_views import TicketPriorityCreateListApiView, TicketPriorityDetailsApiView
 from tickets.views.ticket_status_views import TicketStatusCreateListApiView, TicketStatusDetailsApiView
 from tickets.views.ticket_views import TicketCreateListApiView, TicketDetailsApiView
@@ -18,6 +19,8 @@ urlpatterns = [
     path("ticket-status/<pk>/", TicketStatusDetailsApiView.as_view(), name="ticket-status-details"),
    
 
+    path("notification-logs/", NotificationLogsListApiView.as_view(), name="notification-logs-list"),
+    path("notification-log/<pk>/", NotificationLogDetailsApiView.as_view(), name="notification-log-details"),
    
 
 ]
