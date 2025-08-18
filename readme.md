@@ -107,9 +107,10 @@ python manage.py createsuperuser
 ```bash
 python manage.py seed_predefined_roles
 python manage.py load_menu_structure
+python manage.py grant_admin_menu_permissions
 ```
 
-### 8. Run the development Server
+### 10. Run the development Server
 
 ```bash
 python manage.py runserver
@@ -117,6 +118,8 @@ python manage.py runserver
 
 The application should now be accessible at http://localhost:8000.
 
+mission for role by visiting
+```
 ## 🗂️ Project Structure
 
 ```
