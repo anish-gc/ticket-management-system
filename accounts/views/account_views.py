@@ -26,8 +26,13 @@ class AccountCreateListApiView(BaseAPIView):
 
     def get(self, request):
 
-        account_data = self.get_serializer_data(Account, AccountListSerializer,  {"is_active": True})
-
+        account_data = self.get_serializer_data(
+            Account, 
+            AccountListSerializer, 
+            request=self.request,  
+            paginate=True,  # Enable pagination
+            is_active=True
+        )   
         tickets_data = self.get_menu_tickets()
         return self.handle_success({
             "account_data": account_data,

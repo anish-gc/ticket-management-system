@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from utilities import global_parameters
+from utilities.custom_pagination_class import CustomPagination
 from utilities.serializer_errors import custom_list_serializer_errors, custom_serializer_errors
 
 
@@ -61,19 +62,35 @@ class HandleResponseMixin:
             return HandleResponseMixin.handle_view_exception(exe)
     
     @staticmethod
-    def get_serializer_data(model, serializer_class, many=True, **query):
+    def get_serializer_data(model, serializer_class, request=None, many=True, paginate=False, **query):
         """
         Get serialized data without response wrapper.
         Args:
             model (Model): The Django model to query.
             serializer_class (Serializer): The serializer class to use.
+            request (HttpRequest, optional): The request object (required for pagination).
             many (bool, optional): Whether to handle multiple objects (default is True).
+            paginate (bool, optional): Whether to paginate results (default is False).
             **query: Additional query parameters for filtering the queryset.
         """
         try:
             if many:
-                model_instance = model.objects.filter(**query)
-                return serializer_class(model_instance, many=True).data
+                queryset = model.objects.filter(**query)
+                
+                if paginate and request is not None:
+                    # Initialize paginator
+                    paginator = CustomPagination()
+                    
+                    # Paginate the queryset
+                    page = paginator.paginate_queryset(queryset, request)
+                    
+                    if page is not None:
+                        # Serialize the page
+                        serializer = serializer_class(page, many=True)
+                        return paginator.get_paginated_response(serializer.data).data
+                
+                # Fallback for non-paginated responses
+                return serializer_class(queryset, many=True).data
             else:
                 model_instance = model.objects.get(**query)
                 return serializer_class(model_instance).data
