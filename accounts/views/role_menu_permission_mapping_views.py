@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class RoleMenuPermissionCreateListApiView(BaseAPIView):
-    menu_url = "/role/menu/mapping/"
+    menu_url = "/role/menu/permission/mapping/"
 
     def get(self, request):
         try:
@@ -54,7 +54,7 @@ class RoleMenuPermissionCreateListApiView(BaseAPIView):
 
 
 class RoleMenuPermissionDetailsApiView(BaseAPIView):
-    menu_url = "/role/menu/mapping/"
+    menu_url = "/role/menu/permission/mapping/"
 
     def get(self, request):
         try:

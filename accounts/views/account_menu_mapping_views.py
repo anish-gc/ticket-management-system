@@ -16,10 +16,10 @@ from utilities.api_views import BaseAPIView
 logger = logging.getLogger("django")
 
 
-class UserMenuAssignmentCreateListApiView(BaseAPIView):
+class AccountMenuMappingCreateListApiView(BaseAPIView):
     """API endpoint for creating and listing user menu assignments."""
 
-    menu_url = "/user-menu-assignments/"
+    menu_url = "/account/menu/mapping/"
 
     def get(self, request):
         """Retrieve all user menu assignments."""
@@ -51,10 +51,10 @@ class UserMenuAssignmentCreateListApiView(BaseAPIView):
         return self.handle_invalid_serializer(serializer)
 
 
-class UserMenuAssignmentDetailsApiView(BaseAPIView):
+class AccountMenuMappingDetailsApiView(BaseAPIView):
     """API endpoint for retrieving, updating, and deleting a specific user menu assignment."""
 
-    menu_url = "/user-menu-assignments/"
+    menu_url = "/account/menu/mapping/"
 
     def get(self, request, pk):
         """Retrieve a user menu assignment by reference_id."""

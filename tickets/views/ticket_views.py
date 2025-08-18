@@ -42,7 +42,6 @@ class TicketCreateListApiView(BaseAPIView):
                 from accounts.models import Menu
 
                 menu = Menu.objects.get(reference_id=menu_id, is_active=True)
-                print(menu)
             except Menu.DoesNotExist:
                 pass
 

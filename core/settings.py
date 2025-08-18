@@ -3,7 +3,7 @@ from decouple import config
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-SECRET_KEY = "django-insecure-iqi0*dn_@=xr_3@h2w64j!gwx&9fg2l-cj0rvfzk8f8dg(n42m"
+SECRET_KEY = config("SECRET_KEY")
 
 DEBUG = True
 
@@ -119,6 +119,26 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.MultiPartParser",
     ],
 }
+
+# Email settings
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT =config("EMAIL_PORT", default=587)
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True)
+ADMIN_EMAIL = config("ADMIN_EMAIL")
+
+# Site config
+SITE_URL = config("SITE_URL", default="http://localhost:8000")
+COMPANY_NAME = config("COMPANY_NAME", default="My Company")
+
+# Pagination
+PAGE_SIZE = config("PAGE_SIZE", default=10)
+
+from .jwt_behaviour import *
+
+
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -144,19 +164,3 @@ LOGGING = {
         },
     },
 }
-
-EMAIL_HOST_USER = "anishgharti10@gmail.com"
-EMAIL_HOST_PASSWORD = "slthmlmixlkpkmcp"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-ADMIN_EMAIL = 'anishgharti10@gmail.com'  # admin email
-# Site configuration
-SITE_URL = 'http://localhost:8000'  
-COMPANY_NAME = 'Ek Ghanti'  
-
-
-PAGE_SIZE = 10
-
-from .jwt_behaviour import *
-

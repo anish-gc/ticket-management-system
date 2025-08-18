@@ -181,7 +181,6 @@ class MenuSerializer(serializers.Serializer):
     def validate_menuUrl(self, value):
         """Validate menu URL format."""
         parent = self.initial_data.get("parentReferenceId") 
-        print(parent)
         if parent and value and not value.startswith("/"):
             raise serializers.ValidationError("Sub Menu URL should start with '/'")
         return value

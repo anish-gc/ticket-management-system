@@ -63,10 +63,10 @@ def confirm_login_details(user: Account) -> Dict[str, Any]:
             "refreshToken": refresh_token,
             "username": user.username,
             "designation": "superadmin" if user.is_superuser else user.role.name,
-            "sessionTime": settings.SIMPLE_JWT.get(
+            "sessionTimeInMinutes": settings.SIMPLE_JWT.get(
                 "ACCESS_TOKEN_LIFETIME"
             ).total_seconds()
-            / 3600,
+            / 60,
             "menu": (
                 get_menu_structure(None, is_superuser=True)
                 if user.is_superuser

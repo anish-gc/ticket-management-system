@@ -157,7 +157,6 @@ class EnhancedCustomPermission(permissions.BasePermission):
             except Menu.DoesNotExist:
                 logger.error(f"Menu with URL {menu_url} not found")
                 return False
-            print('iamhere')
 
             # Priority 1: Check user-specific menu assignments
             user_assignment = UserMenuAssignment.objects.filter(
